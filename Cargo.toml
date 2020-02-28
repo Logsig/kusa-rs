@@ -1,0 +1,19 @@
+[package]
+name = "kusa-rs"
+version = "0.2.0"
+authors = ["S <logsig@logsig.com>"]
+edition = "2018"
+description = "A High performance IoT Server"
+readme = "README.md"
+homepage = "https://github.com/logsig/kusa-rs"
+repository = "https://github.com/logsig/kusa-rs"
+documentation = "https://github.comf/logsig/kusa-rs/docs"
+keywords = ["mqtt", "pubsub", "broker", "iot", "server", "codec"]
+categories = ["server", "network-programming", "async"]
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "0.2", features = ["full"] }
+tokio-util = { version = "0.2", features = ["full"] }
