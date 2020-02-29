@@ -1,21 +1,24 @@
-KUSA
+**KUSA**
 
 A High performance IoT Server.
 
+---
 How to run server:
 `cargo run`
 
-Server command
+---
+Server command(telnet to port 6142)
 
-telnet to port 6142
+`ping: ping-pong server`
 
-ping: ping-pong server
-quit: exit server
+`quit: exit server`
 
+---
 
-developer: Logsig
+Developer: Logsig
 
 TODO:
+
     - Spin up broker
     - Implement protocol handler for subscribe topics
     - Implement protocol handler for publish topics
