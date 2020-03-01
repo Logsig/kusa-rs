@@ -2,7 +2,7 @@
 
 A High performance IoT Server.
 
-![Rust](https://github.com/Logsig/kusa-rs/workflows/Built%20and%20tested/badge.svg?branch=master)
+![Rust](https://github.com/Logsig/kusa-rs/workflows/build-and-test/badge.svg?branch=master)
 
 
 ---
