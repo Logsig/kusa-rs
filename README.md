@@ -2,6 +2,9 @@
 
 A High performance IoT Server.
 
+![Rust](https://github.com/Logsig/kusa-rs/workflows/Built%20and%20tested/badge.svg?branch=master)
+
+
 ---
 How to run server:
 `cargo run`
