@@ -1,8 +1,13 @@
-use std::{error::Error};
 use tokio::prelude::*;
-use tokio::stream::StreamExt;
+use futures_util::{SinkExt};
+use std::{error::Error};
+use log::info;
+
+use tokio::stream::{StreamExt};
 use tokio::net::{TcpStream, TcpListener};
 use tokio_util::codec::{ LinesCodec, FramedRead };
+use tokio_tungstenite::{accept_async};
+
 
 pub async fn build_server(mut listener: TcpListener){
         let mut incoming = listener.incoming();
@@ -12,9 +17,10 @@ pub async fn build_server(mut listener: TcpListener){
                     println!("Accepted connection from {:?}", socket.peer_addr().unwrap());
                     let _ = socket.write_all(b"Welcome to KUSA Server!\n").await;
 
+
                     tokio::spawn(async move {   // Spawn async handler(may or may not be a thread)
                         
-                        if let Err(e) = process(socket).await {
+                        if let Err(e) = handle_connection(socket).await {
                             println!("failed to process connection; error = {}", e);
                         }
                         
@@ -56,6 +62,24 @@ async fn process(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
         }
     }
     println!("Socket received FIN packet and closed connection");
+
+    Ok(())
+}
+
+// WebSocket
+async fn handle_connection(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+    let peer = stream.peer_addr().expect("connected streams should have a peer address");
+    info!("Peer address: {}", peer);
+    let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
+
+    info!("New WebSocket connection: {}", peer);
+
+    while let Some(msg) = ws_stream.next().await {
+        let msg = msg?;
+        if msg.is_text() || msg.is_binary() {
+            ws_stream.send(msg).await?;
+        }
+    }
 
     Ok(())
 }
