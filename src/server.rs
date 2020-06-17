@@ -19,11 +19,9 @@ pub async fn build_server(mut listener: TcpListener){
 
 
                     tokio::spawn(async move {   // Spawn async handler(may or may not be a thread)
-                        
-                        if let Err(e) = handle_connection(socket).await {
+                        if let Err(e) = process(socket).await {
                             println!("failed to process connection; error = {}", e);
                         }
-                        
                       });
 
                 }
@@ -66,8 +64,19 @@ async fn process(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// WebSocket
-async fn handle_connection(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+// async fn handler_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+//     let peer = stream.peer_addr().expect("Connected stream should have a peer address");
+//     info!("MQTT Connected Peer address: {}", peer);
+
+//     let (reader, mut writer) = stream.split();
+
+//     let mut framed_reader = FramedRead::new(reader, MqttCodec::new());
+
+//     Ok(())
+// }
+
+// WebSocket handler
+async fn handle_websocket_connection(stream: TcpStream) -> Result<(), Box<dyn Error>> {
     let peer = stream.peer_addr().expect("connected streams should have a peer address");
     info!("Peer address: {}", peer);
     let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
