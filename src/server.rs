@@ -1,13 +1,15 @@
 use tokio::prelude::*;
-use futures_util::{SinkExt};
+use futures_util::{SinkExt,StreamExt};
 use std::{error::Error};
 use log::info;
 
-use tokio::stream::{StreamExt};
+//use tokio::stream::{StreamExt};
+
 use tokio::net::{TcpStream, TcpListener};
-use tokio_util::codec::{ LinesCodec, FramedRead };
+use tokio_util::codec::{ LinesCodec, FramedRead, Framed };
 use tokio_tungstenite::{accept_async};
 
+use rumq_core::mqtt4::{codec as mqtt_codec, Packet};
 
 pub async fn build_server(mut listener: TcpListener){
         let mut incoming = listener.incoming();
@@ -19,11 +21,10 @@ pub async fn build_server(mut listener: TcpListener){
 
 
                     tokio::spawn(async move {   // Spawn async handler(may or may not be a thread)
-                        if let Err(e) = process(socket).await {
+                        if let Err(e) = handle_mqtt_stream(socket).await {
                             println!("failed to process connection; error = {}", e);
                         }
                       });
-
                 }
                 Err(err) => {
                     // Handle error by printing to STDOUT.
@@ -64,16 +65,20 @@ async fn process(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// async fn handler_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-//     let peer = stream.peer_addr().expect("Connected stream should have a peer address");
-//     info!("MQTT Connected Peer address: {}", peer);
+async fn handle_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
+    let peer = stream.peer_addr().expect("Connected stream should have a peer address");
+    info!("MQTT Connected Peer address: {}", peer);
 
-//     let (reader, mut writer) = stream.split();
+    let mut framed = Framed::new(stream, mqtt_codec::MqttCodec::new(2048));
 
-//     let mut framed_reader = FramedRead::new(reader, MqttCodec::new());
+    let (sender, mut receiver) = framed.split();
 
-//     Ok(())
-// }
+    while let Some(packet) = receiver.next().await {
+        dbg!(packet);
+    }
+
+    Ok(())
+}
 
 // WebSocket handler
 async fn handle_websocket_connection(stream: TcpStream) -> Result<(), Box<dyn Error>> {
