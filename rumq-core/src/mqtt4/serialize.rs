@@ -5,6 +5,7 @@ use byteorder::WriteBytesExt;
 /// Mqtt awareness on top of `Write`
 pub trait MqttWrite: WriteBytesExt {
     fn mqtt_write(&mut self, packet: &Packet) -> Result<(), Error> {
+        dbg!("Sync serialize", packet);
         match packet {
             Packet::Connect(connect) => {
                 self.write_u8(0b00010000)?;
@@ -51,6 +52,7 @@ pub trait MqttWrite: WriteBytesExt {
                 let code = connack.code as u8;
                 let data = [0x20, 0x02, session_present, code];
                 self.write_all(&data)?;
+                dbg!("write Connack", data);
                 Ok(())
             }
             Packet::Publish(publish) => {

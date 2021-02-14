@@ -1,15 +1,14 @@
 use tokio::prelude::*;
-use futures_util::{SinkExt,StreamExt};
 use std::{error::Error};
 use log::info;
 
-//use tokio::stream::{StreamExt};
+use tokio::stream::{StreamExt};
+use futures::sink::{SinkExt};
 
 use tokio::net::{TcpStream, TcpListener};
 use tokio_util::codec::{ LinesCodec, FramedRead, Framed };
-use tokio_tungstenite::{accept_async};
 
-use rumq_core::mqtt4::{codec as mqtt_codec, Packet};
+use rumq_core::mqtt4::{codec as mqtt_codec, ConnectReturnCode};
 
 pub async fn build_server(mut listener: TcpListener){
         let mut incoming = listener.incoming();
@@ -66,33 +65,26 @@ async fn process(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-    let peer = stream.peer_addr().expect("Connected stream should have a peer address");
-    info!("MQTT Connected Peer address: {}", peer);
+    //let peer = stream.peer_addr().expect("Connected stream should have a peer address");
+    //info!("MQTT Connected Peer address: {}", peer);
+
+    //let (mut receiver, mut sender) = stream.split();
 
     let mut framed = Framed::new(stream, mqtt_codec::MqttCodec::new(2048));
+    //let mut framed_sender = FramedWrite::new(sender, mqtt_codec::MqttCodec::new(2048));
 
-    let (sender, mut receiver) = framed.split();
-
-    while let Some(packet) = receiver.next().await {
+    while let Some(packet) = framed.next().await {
         dbg!(packet);
-    }
+        
+        let connack = rumq_core::mqtt4::Connack::new(ConnectReturnCode::Accepted, false);
+        let packet = rumq_core::mqtt4::Packet::Connack(connack);
 
-    Ok(())
-}
-
-// WebSocket handler
-async fn handle_websocket_connection(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-    let peer = stream.peer_addr().expect("connected streams should have a peer address");
-    info!("Peer address: {}", peer);
-    let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
-
-    info!("New WebSocket connection: {}", peer);
-
-    while let Some(msg) = ws_stream.next().await {
-        let msg = msg?;
-        if msg.is_text() || msg.is_binary() {
-            ws_stream.send(msg).await?;
-        }
+        framed.get_mut().write_all(b"\0x32\0x2\0x0\0x0").await?;
+        
+        //framed.send(packet).await?;
+        dbg!(">>>>>");
+        framed.send(rumq_core::mqtt4::Packet::Pingreq).await?;
+        dbg!("ping1");
     }
 
     Ok(())

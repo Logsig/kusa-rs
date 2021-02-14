@@ -7,6 +7,7 @@ use tokio::io::AsyncWriteExt;
 #[async_trait]
 pub trait AsyncMqttWrite: AsyncWriteExt + Unpin {
     async fn async_mqtt_write(&mut self, packet: &Packet) -> Result<(), Error> {
+        dbg!("Async serialize", packet);
         match packet {
             Packet::Connect(connect) => {
                 self.write_u8(0b00010000).await?;
