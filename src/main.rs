@@ -12,6 +12,7 @@ pub mod server;
 async fn main() {
 
     let args: Vec<String> = env::args().collect();
+    
     if args.len() > 1 && args[1] == "client" {
         println!("Client mode");
         // let mut stream = TcpStream::connect(("127.0.0.1", 6142)).await.unwrap();
@@ -30,7 +31,7 @@ async fn main() {
 
             dbg!(&buffer);
             
-            if let Err(e) = stream.write_all(&buffer).await {
+            if let Err(e) = stream.write_all(&buffer) {
                 println!("failed to write to socket; err = {:?}", e);
                 return;
             }

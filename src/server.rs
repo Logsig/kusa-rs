@@ -76,12 +76,12 @@ async fn handle_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
     while let Some(packet) = framed.next().await {
         dbg!(packet);
         
-        let connack = rumq_core::mqtt4::Connack::new(ConnectReturnCode::Accepted, false);
+        let connack = rumq_core::mqtt4::Connack::new(ConnectReturnCode::Accepted, true);
         let packet = rumq_core::mqtt4::Packet::Connack(connack);
 
-        framed.get_mut().write_all(b"\0x32\0x2\0x0\0x0").await?;
+        //framed.get_mut().write_all(b"\0x32\0x2\0x0\0x0").await?;
         
-        //framed.send(packet).await?;
+        framed.send(packet).await?;
         dbg!(">>>>>");
         framed.send(rumq_core::mqtt4::Packet::Pingreq).await?;
         dbg!("ping1");
