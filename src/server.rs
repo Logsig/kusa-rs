@@ -1,91 +1,79 @@
-use tokio::prelude::*;
-use std::{error::Error};
-use log::info;
+use std::error::Error;
 
-use tokio::stream::{StreamExt};
-use futures::sink::{SinkExt};
+use bytes::BytesMut;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_stream::{self as stream, StreamExt, Stream};
+use tokio_util::codec::{Encoder, Decoder, Framed};
 
-use tokio::net::{TcpStream, TcpListener};
-use tokio_util::codec::{ LinesCodec, FramedRead, Framed };
-
-use rumq_core::mqtt4::{codec as mqtt_codec, ConnectReturnCode};
-
-pub async fn build_server(mut listener: TcpListener){
-        let mut incoming = listener.incoming();
-        while let Some(socket_res) = incoming.next().await {    // Blocking call await for incoming connections
-            match socket_res {
-                Ok(mut socket) => {
-                    println!("Accepted connection from {:?}", socket.peer_addr().unwrap());
-                    let _ = socket.write_all(b"Welcome to KUSA Server!\n").await;
-
-
-                    tokio::spawn(async move {   // Spawn async handler(may or may not be a thread)
-                        if let Err(e) = handle_mqtt_stream(socket).await {
-                            println!("failed to process connection; error = {}", e);
-                        }
-                      });
-                }
-                Err(err) => {
-                    // Handle error by printing to STDOUT.
-                    println!("accept error = {:?}", err);
-                }
-            }
-        }
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Packet {
+    Reserved = 0,
+    Connect = 1
 }
 
+/// An error occured while encoding or decoding a line.
+#[derive(Debug)]
+pub enum MQTTCodecError {
+    InvalidPacket,
+    /// An IO error occured.
+    Io(std::io::Error),
+}
 
-async fn process(mut stream: TcpStream) -> Result<(), Box<dyn Error>> {
-    
-    let (reader, mut writer) = stream.split();
+// Convert io Error into  MQTTCodecError
+impl From<std::io::Error> for MQTTCodecError {
+  fn from(e: std::io::Error) -> MQTTCodecError {
+    MQTTCodecError::Io(e)
+  }
+}
 
-    let mut framed_reader = FramedRead::new(reader, LinesCodec::new());
-    // let mut framedWriter = FramedWrite::new(writer, LinesCodec::new())
+pub struct MQTTCodec;
 
-    // We loop while there are messages coming from the Stream `framed`.
-    // The stream will return None once the client disconnects.
-    while let Some(message) = framed_reader.next().await {
-        match message {
-            Ok(line) => match line.as_str() {
-                "ping" => writer.write_all(b"pong").await?,
-                "quit" => {
-                    writer.write_all(b"byebye").await?;
-                    return Ok(())
-                }, // Connection closed
-                _ => {
-                    println!("Unknown command: {:?}", line); 
-                    writer.write_all(b"I do no understand").await?;
-                },
-            }
-            Err(err) => println!("Socket closed with error: {:?}", err),
-        }
-    }
-    println!("Socket received FIN packet and closed connection");
+impl MQTTCodec {
+  pub fn new() -> MQTTCodec {
+    MQTTCodec {}
+  }
+}
 
+impl Encoder<Packet> for MQTTCodec {
+  type Error = MQTTCodecError;
+
+  fn encode(&mut self, packet: Packet, mut buf: &mut BytesMut) -> Result<(), Self::Error> {
     Ok(())
+  }
 }
+
+impl Decoder for MQTTCodec {
+  type Item = Packet;
+  type Error = MQTTCodecError;
+  fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    Ok(Some(Packet::Reserved))
+  }
+}
+
+
+pub async fn build_server(listener: TcpListener) {
+  // Listener loop
+  loop {
+    let (socket, info) = listener.accept().await.unwrap();
+    match handle_mqtt_stream(socket).await {
+      Ok(()) => {
+        dbg!("Connection accepted: {}", info);
+      },
+      Err(e) => {
+        dbg!(e);
+      },
+    };
+  }
+}
+
 
 async fn handle_mqtt_stream(stream: TcpStream) -> Result<(), Box<dyn Error>> {
-    //let peer = stream.peer_addr().expect("Connected stream should have a peer address");
-    //info!("MQTT Connected Peer address: {}", peer);
+  let mut framed = Framed::new(stream, MQTTCodec::new());
 
-    //let (mut receiver, mut sender) = stream.split();
+  while let Some(packet) = framed.next().await {
+    
+  }
 
-    let mut framed = Framed::new(stream, mqtt_codec::MqttCodec::new(2048));
-    //let mut framed_sender = FramedWrite::new(sender, mqtt_codec::MqttCodec::new(2048));
-
-    while let Some(packet) = framed.next().await {
-        dbg!(packet);
-        
-        let connack = rumq_core::mqtt4::Connack::new(ConnectReturnCode::Accepted, true);
-        let packet = rumq_core::mqtt4::Packet::Connack(connack);
-
-        //framed.get_mut().write_all(b"\0x32\0x2\0x0\0x0").await?;
-        
-        framed.send(packet).await?;
-        dbg!(">>>>>");
-        framed.send(rumq_core::mqtt4::Packet::Pingreq).await?;
-        dbg!("ping1");
-    }
-
-    Ok(())
+  Ok(())
 }

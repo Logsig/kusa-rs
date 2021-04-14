@@ -78,6 +78,7 @@ dependencies = [
 name = "kusa-rs"
 version = "0.2.0"
 dependencies = [
+ "bytes",
  "log",
  "tokio",
  "tokio-stream",
